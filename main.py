@@ -35,30 +35,74 @@ def get_track_id(track):
     return track_id[4]
 
 
-def get_characteristics_track(token, track_id):
-    url = f"https://api.spotify.com/v1/tracks/{track_id}"
+def get_characteristics_track(token, track_id, keys):
+    url = f"https://api.spotify.com/v1/audio-features/{track_id}"
     headers = get_auth_header(token)
 
     response = get(url, headers=headers)
 
+    
+
     if response.status_code == 200:
         track_info = response.json()
+        important_keys = {}
 
-        return track_info
+        for key in keys:
+            if key in track_info:
+                important_keys[key] = track_info[key]
+        
+        return important_keys
     else:
         # Print the error response content
         print(f"Error: {response.status_code}")
         return None
 
 
+def search_for_artist(token, artist_name):
+    url = "https://api.spotify.com/v1/search"
+
+    headers = get_auth_header(token)
+    query = f"?q={artist_name}&type=artist&limit=1"
+
+    query_url = url + query
+    result = get(query_url, headers=headers)
+    json_result = json.loads(result.content)["artists"]["items"]
+
+    if len(json_result) == 0:
+        print("There is not an artist with this name on Spotify :(")
+        return None
+    
+    return json_result[0]
+
+
+def get_artist_songs(token, artist_id):
+    url = f"https://api.spotify.com/v1/artists/{artist_id}/top-tracks?country=US"
+    headers = get_auth_header(token)
+
+    result = get(url, headers=headers)
+    json_result = json.loads(result.content)
+
+    if "tracks" in json_result:
+        return json_result["tracks"]
+    else:
+        print("Error: 'tracks' not found in the API response.")
+        return None
+
+
+
 def main():
     token = get_token()
-    track_url = "https://open.spotify.com/track/4a2IfhPphh7KglUT8r4FTL?si=185818e201b44544"
+    track_url = "https://open.spotify.com/track/0Y2i84QWPFiFHQfEQDgHya?si=7918f849eee04290"
     track_id = get_track_id(track_url)
+    desired_keys = ["danceability", "energy", "loudness", "tempo", "valence", "speechiness"]
+    artist = search_for_artist(token, "Leviathan")
+    artist_id = artist["id"]
+    songs = get_artist_songs(token, artist_id)
 
+    #for idx, song in enumerate(songs):
+        #print((idx + 1), song["name"])
 
-    #characteristics_track = get_characteristics_track(token, "1e9XBW7dBqZeHVYMFI9oHN?si=c659d5b4c5314020")
-
+    track_info = get_characteristics_track(token, track_id, desired_keys)
 
 if __name__ == "__main__":
     main()
